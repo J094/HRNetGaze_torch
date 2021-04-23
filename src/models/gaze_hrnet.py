@@ -254,6 +254,7 @@ class HighResolutionModule(nn.Module):
         # Add layer list into nn.ModuleList.
         return nn.ModuleList(fuse_layers)
 
+    # Return num_inchannels for creating next stage.
     def get_num_inchannels(self):
         return self.num_inchannels
 
@@ -297,7 +298,7 @@ class GazeHighResolutionNet(nn.Module):
         super(GazeHighResolutionNet, self).__init__()
 
         # stage 1
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=2, padding=1,
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1,
@@ -308,8 +309,8 @@ class GazeHighResolutionNet(nn.Module):
 
         # stage 2
         self.stage2_cfg = extra['STAGE2']
-        num_channels = self.stage2_cfg['NUM_CHANNELS']
-        block = blocks_dict[self.stage2_cfg['BLOCK']]
+        num_channels = self.stage2_cfg['NUM_CHANNELS']  # branch1: 32, branch2: 64
+        block = blocks_dict[self.stage2_cfg['BLOCK']]  # block: BasicBlock
         num_channels = [
             num_channels[i] * block.expansion for i in range(len(num_channels))
         ]
@@ -319,8 +320,8 @@ class GazeHighResolutionNet(nn.Module):
 
         # stage 3
         self.stage3_cfg = extra['STAGE3']
-        num_channels = self.stage3_cfg['NUM_CHANNELS']
-        block = blocks_dict[self.stage3_cfg['BLOCK']]
+        num_channels = self.stage3_cfg['NUM_CHANNELS']  # branch1: 32, branch2: 64, branch3: 128
+        block = blocks_dict[self.stage3_cfg['BLOCK']]  # block: BasicBlock
         num_channels = [
             num_channels[i] * block.expansion for i in range(len(num_channels))
         ]
@@ -331,8 +332,8 @@ class GazeHighResolutionNet(nn.Module):
 
         # stage 4
         self.stage4_cfg = extra['STAGE4']
-        num_channels = self.stage4_cfg['NUM_CHANNELS']
-        block = blocks_dict[self.stage4_cfg['BLOCK']]
+        num_channels = self.stage4_cfg['NUM_CHANNELS']  # branch1: 32, branch2: 64, branch3: 128, branch4: 256
+        block = blocks_dict[self.stage4_cfg['BLOCK']]  # block: BasicBlock
         num_channels = [
             num_channels[i] * block.expansion for i in range(len(num_channels))
         ]
@@ -362,6 +363,7 @@ class GazeHighResolutionNet(nn.Module):
         transition_layers = []
         for i in range(num_branches_cur):
             if i < num_branches_pre:
+                # Branch i has been created, so just check if num_channels match.
                 if num_channels_cur_layer[i] != num_channels_pre_layer[i]:
                     transition_layers.append(
                         nn.Sequential(
@@ -374,12 +376,17 @@ class GazeHighResolutionNet(nn.Module):
                             nn.ReLU(inplace=True)
                         )
                     )
+                # If match, then append None.
                 else:
                     transition_layers.append(None)
             else:
+                # Branch i is a new branch, which need to be created. (Downsample)
                 conv3x3s = []
+                # According to how far the new branch to the last old branch in pre_stage,
+                # make the correct num of Downsample layers.
                 for j in range(i+1-num_branches_pre):
                     inchannels = num_channels_pre_layer[-1]
+                    # Ensure outchannels for last new branch.
                     outchannels = num_channels_cur_layer[i] \
                         if j == i-num_branches_pre else inchannels
                     conv3x3s.append(
@@ -392,7 +399,7 @@ class GazeHighResolutionNet(nn.Module):
                         )
                     )
                 transition_layers.append(nn.Sequential(*conv3x3s))
-
+        # transition_layers work in different branches, so use nn.ModuleList to manage.
         return nn.ModuleList(transition_layers)
 
     def _make_layer(self, block, planes, blocks, stride=1):
@@ -449,6 +456,7 @@ class GazeHighResolutionNet(nn.Module):
         return nn.Sequential(*modules), num_inchannels
 
     def forward(self, x):
+        # Go through stage1.
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -458,33 +466,40 @@ class GazeHighResolutionNet(nn.Module):
         x = self.layer1(x)
 
         x_list = []
+        # Go through transition1.
         for i in range(self.stage2_cfg['NUM_BRANCHES']):
             if self.transition1[i] is not None:
                 x_list.append(self.transition1[i](x))
             else:
                 x_list.append(x)
+        # Go through stage2.
         y_list = self.stage2(x_list)
 
         x_list = []
+        # Go through transition2.
         for i in range(self.stage3_cfg['NUM_BRANCHES']):
             if self.transition2[i] is not None:
                 x_list.append(self.transition2[i](y_list[-1]))
             else:
                 x_list.append(y_list[i])
+        # Go through stage3.
         y_list = self.stage3(x_list)
 
         x_list = []
+        # Go through transition3.
         for i in range(self.stage4_cfg['NUM_BRANCHES']):
             if self.transition3[i] is not None:
                 x_list.append(self.transition3[i](y_list[-1]))
             else:
                 x_list.append(y_list[i])
+        # Go through stage4.
         y_list = self.stage4(x_list)
-
+        
+        # Final layer to predict 18 heatmaps for 18 landmarks.
         x = self.final_layer(y_list[0])
-
+        # Calculate coordinaten of 18 landmarks from heatmaps. (No trainable!)
         ldmks = self.callandmarks(x)
-
+        # Linear module to do radius regression.
         radius = self.radius_regressor(ldmks)
 
         return x, ldmks, radius

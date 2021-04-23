@@ -16,13 +16,20 @@ class UnityEyesDataset(Dataset):
     def __init__(self,
                  dataset_path: str,
                  cfg,
+                 is_train: bool,
                  generate_heatmaps=False,
                  random_difficulty=False):
         super(UnityEyesDataset).__init__()
-
-        self.dataset_path = dataset_path
-        self.file_stems = sorted([p[:-5] for p in os.listdir(dataset_path)
-                                 if p.endswith('.json')], key=lambda x: int(x))
+        if is_train:
+            self.dataset_path = os.path.join(dataset_path, 'train')
+            self.num_entries = 1000000
+            with open(os.path.join(self.dataset_path, 'FileList.txt'), mode='r') as f:
+                self.file_stems = f.readlines()
+        else:
+            self.dataset_path = os.path.join(dataset_path, 'val')
+            self.num_entries = 20000
+            with open(os.path.join(self.dataset_path, 'FileList.txt'), mode='r') as f:
+                self.file_stems = f.readlines()
 
         self.eye_image_shape = cfg.MODEL.IMAGE_SIZE
         self.heatmaps_scale = cfg.MODEL.HEATMAPS_SCALE
@@ -37,22 +44,33 @@ class UnityEyesDataset(Dataset):
             'scale': (0.01, 0.1),
             'rescale': (1.0, 0.5),
             'num_line': (0.0, 2.0),
-            'heatmap_sigma': (2.5, 1.5),
+            'heatmap_sigma': (4.0, 1.0),
         }
         self.random_difficulty = random_difficulty
     
     def __len__(self):
-        return len(self.file_stems)
+        return self.num_entries
 
     def __getitem__(self, idx):
         # Give random difficulty for every entry.
         if self.random_difficulty:
             difficulty = np.random.rand()
             self.set_difficulty(difficulty)
-
-        file_stem = self.file_stems[idx]
-        jpg_path = os.path.join(self.dataset_path, f'{file_stem}.jpg')
-        json_path = os.path.join(self.dataset_path, f'{file_stem}.json')
+        file_stem = eval(self.file_stems[idx])
+        jpg_path = os.path.join(
+            self.dataset_path,
+            f'{int(file_stem/1000000)}', 
+            f'{int((file_stem%1000000)/100000)}', 
+            f'{int((file_stem%100000)/10000)}',
+            f'{file_stem}.jpg',
+            )
+        json_path = os.path.join(
+            self.dataset_path,
+            f'{int(file_stem/1000000)}', 
+            f'{int((file_stem%1000000)/100000)}', 
+            f'{int((file_stem%100000)/10000)}',
+            f'{file_stem}.json',
+             )
         with open(json_path, 'r') as f:
             json_data = json.load(f)  # json_data is a dict type data
         entry = {
