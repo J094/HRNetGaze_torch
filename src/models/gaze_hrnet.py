@@ -496,13 +496,13 @@ class GazeHighResolutionNet(nn.Module):
         y_list = self.stage4(x_list)
         
         # Final layer to predict 18 heatmaps for 18 landmarks.
-        x = self.final_layer(y_list[0])
+        heatmaps = self.final_layer(y_list[0])
         # Calculate coordinaten of 18 landmarks from heatmaps. (No trainable!)
-        ldmks = self.callandmarks(x)
+        ldmks = self.callandmarks(heatmaps)
         # Linear module to do radius regression.
         radius = self.radius_regressor(ldmks)
 
-        return x, ldmks, radius
+        return heatmaps, ldmks, radius
 
     def init_weights(self, pretrained=''):
         logger.info('=> init weights from normal distribution')
@@ -550,11 +550,12 @@ class CalLandmarks(nn.Module):
         super(CalLandmarks, self).__init__()
         self.num_landmarks = num_landmarks
         self.heatmaps_scale = heatmaps_scale
+        self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, x):
         _, _, h, w = x.shape
-        h = h / self.heatmaps_scale
-        w = w / self.heatmaps_scale
+        h = int(h / self.heatmaps_scale)
+        w = int(w / self.heatmaps_scale)
         # Assume normalized coordinate [0, 1] for numeric stability
         ref_ys, ref_xs = torch.meshgrid(torch.linspace(0, 1.0, steps=h),
                                         torch.linspace(0, 1.0, steps=w))
@@ -566,7 +567,7 @@ class CalLandmarks(nn.Module):
         # x = torch.transpose(x, 1, 3)
         # x = torch.transpose(x, 2, 3)
         x = torch.reshape(x, (-1, self.num_landmarks, h*w))
-        x = F.softmax(beta*x, dim=-1)
+        x = self.softmax(beta*x)
         lmrk_xs = torch.sum(ref_xs * x, dim=2)
         lmrk_ys = torch.sum(ref_ys * x, dim=2)
         # Return to actual coordinates ranges
