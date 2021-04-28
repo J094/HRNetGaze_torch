@@ -619,3 +619,4 @@ def get_gaze_net(cfg, is_train: bool, **kwargs):
         model.init_weights(cfg['MODEL']['PRETRAINED'])
 
     return model
+    

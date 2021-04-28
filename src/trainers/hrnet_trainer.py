@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class HRNetTrainer(object):
@@ -17,7 +17,6 @@ class HRNetTrainer(object):
                  train_dataset,
                  val_dataset,
                  epochs=100,
-                 batch_size=32,
                  initial_learning_rate=0.001,
                  start_epoch=1,
                  print_freq=500,
@@ -32,7 +31,6 @@ class HRNetTrainer(object):
         self.val_dataset = val_dataset
 
         self.epochs = epochs
-        self.batch_size = batch_size
         self.current_learning_rate = initial_learning_rate
         self.start_epoch = start_epoch
 
