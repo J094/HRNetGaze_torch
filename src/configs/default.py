@@ -9,8 +9,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-
 from yacs.config import CfgNode as CN
 
 
@@ -23,14 +21,14 @@ _C.MODEL.PRETRAINED = ''
 _C.MODEL.NUM_LDMKS = 18
 _C.MODEL.TAG_PER_LDMKS = True
 _C.MODEL.TARGET_TYPE = 'gaussian'
-_C.MODEL.IMAGE_SIZE = [72, 120]  # width * height, ex: 192 * 256
+_C.MODEL.IMAGE_SIZE = [72, 120]
 _C.MODEL.HEATMAPS_SCALE = 1
 # _C.MODEL.SIGMA = 2
 # HRNet-W18-light
 # gaze_multi_resoluton_net related params
 _C.MODEL.EXTRA = CN()
 _C.MODEL.EXTRA.PRETRAINED_LAYERS = ['*']
-_C.MODEL.EXTRA.STEM_INPLANES = 64
+_C.MODEL.EXTRA.STEM_INPLANES = 32
 _C.MODEL.EXTRA.FINAL_CONV_KERNEL = 1
 
 _C.MODEL.EXTRA.STAGE2 = CN()

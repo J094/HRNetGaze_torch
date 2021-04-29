@@ -5,8 +5,7 @@ def train(batch_size, num_workers, start_epoch, epochs, version):
 
     from src.configs import cfg
     import src.models.gaze_hrnet as gaze_hrnet
-    model = gaze_hrnet.get_gaze_net(cfg, is_train=True).cuda()
-    # model = torch.load("./models/...")
+    model = gaze_hrnet.get_gaze_net(cfg, pretrained="")
 
     from torch.utils.data import DataLoader
     from src.datasources.unityeyes import UnityEyesDataset
@@ -27,8 +26,8 @@ def train(batch_size, num_workers, start_epoch, epochs, version):
         epochs=epochs,
         initial_learning_rate=0.00001,
         start_epoch=start_epoch,
-        print_freq=500,
-        version='v0.1',
+        print_freq=20,
+        version=version,
         tensorboard_dir='./logs'
         )
 
@@ -41,5 +40,5 @@ if __name__ == "__main__":
     start_epoch = eval(sys.argv[3])
     epochs = eval(sys.argv[4])
 
-    train(batch_size, num_workers, start_epoch, epochs, version=f'v0.1')
-    
+    train(batch_size, num_workers, start_epoch, epochs, version='v0.1-hrnet')
+

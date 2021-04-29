@@ -1,9 +1,6 @@
 import os
-import threading
-import time
 
-import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import cv2 as cv
 import numpy as np
 import json
@@ -44,7 +41,7 @@ class UnityEyesDataset(Dataset):
             'scale': (0.01, 0.1),
             'rescale': (1.0, 0.5),
             'num_line': (0.0, 2.0),
-            'heatmap_sigma': (4.0, 1.0),
+            'heatmap_sigma': (7.5, 2.0),
         }
         self.random_difficulty = random_difficulty
     

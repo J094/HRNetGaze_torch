@@ -72,8 +72,8 @@ class HRNetTrainer(object):
         radius_label = inputs['radius'].cuda()
 
         heatmaps_predict, ldmks_predict, radius_predict = self.model(eye_input)
-        loss_heatmaps = 0.1 * self.compute_coord_loss(heatmaps_label, heatmaps_predict)
-        loss_ldmks = self.compute_coord_loss(ldmks_predict, ldmks_label)
+        loss_heatmaps = self.compute_coord_loss(heatmaps_label, heatmaps_predict)
+        loss_ldmks = 10e-3 * self.compute_coord_loss(ldmks_predict, ldmks_label)
         loss_radius = 10e-7 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
 
         loss = loss_heatmaps + loss_ldmks + loss_radius
@@ -89,8 +89,8 @@ class HRNetTrainer(object):
         radius_label = inputs['radius'].cuda()
 
         heatmaps_predict, ldmks_predict, radius_predict = self.model(eye_input)
-        loss_heatmaps = 0.1 * self.compute_coord_loss(heatmaps_label, heatmaps_predict)
-        loss_ldmks = self.compute_coord_loss(ldmks_predict, ldmks_label)
+        loss_heatmaps = self.compute_coord_loss(heatmaps_label, heatmaps_predict)
+        loss_ldmks = 10e-3 * self.compute_coord_loss(ldmks_predict, ldmks_label)
         loss_radius = 10e-7 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
         return loss_heatmaps.item(), loss_ldmks.item(), loss_radius.item()
 
@@ -172,8 +172,8 @@ class HRNetTrainer(object):
             msg = 'Epoch {} train loss {}'.format(epoch, total_train_loss)
             logger.info(msg)
             self.summary_writer_train.add_scalar('epoch loss', total_train_loss, epoch)
-            self.summary_writer_train.add_scalar('epoch loss heatmaps', 10 * train_loss_heatmaps, epoch)
-            self.summary_writer_train.add_scalar('epoch loss ldmks', train_loss_ldmks, epoch)
+            self.summary_writer_train.add_scalar('epoch loss heatmaps', train_loss_heatmaps, epoch)
+            self.summary_writer_train.add_scalar('epoch loss ldmks', 10e3 * train_loss_ldmks, epoch)
             self.summary_writer_train.add_scalar('epoch loss radius', 10e7 * train_loss_radius, epoch)
 
             val_loss_heatmaps, val_loss_ldmks, val_loss_radius = val_epoch(self.val_dataset)
@@ -181,8 +181,8 @@ class HRNetTrainer(object):
             msg = 'Epoch {} val loss {}'.format(epoch, total_val_loss)
             logger.info(msg)
             self.summary_writer_val.add_scalar('epoch loss', total_val_loss, epoch)
-            self.summary_writer_val.add_scalar('epoch loss heatmaps', 10 * val_loss_heatmaps, epoch)
-            self.summary_writer_val.add_scalar('epoch loss ldmks', val_loss_ldmks, epoch)
+            self.summary_writer_val.add_scalar('epoch loss heatmaps', val_loss_heatmaps, epoch)
+            self.summary_writer_val.add_scalar('epoch loss ldmks', 10e3 * val_loss_ldmks, epoch)
             self.summary_writer_val.add_scalar('epoch loss radius', 10e7 * val_loss_radius, epoch)
 
             # save model when reach a new lowest validation loss

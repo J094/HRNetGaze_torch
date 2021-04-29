@@ -6,6 +6,7 @@ import cv2 as cv
 import numpy as np
 
 from configs import cfg
+from models.gaze_hrnet import BasicBlock, Bottleneck
 
 
 BN_MOMENTUM = 0.1
@@ -39,7 +40,14 @@ def get_gaze_frame(heatmaps, landmarks):
     return torch.tensor(frames).cuda()
 
 
-class FrameCNN(nn.Module):
+class FrameNet(nn.Module):
     def __init__(self):
-        super(FrameCNN, self).__init__()
+        super(FrameNet, self).__init__()
+        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=2, padding=1,
+                               bias=False)
+        self.bn1 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1,
+                               bias=False)
+        self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
+        self.relu = nn.ReLU(inplace=True)
         pass

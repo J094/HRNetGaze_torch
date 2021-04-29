@@ -17,6 +17,7 @@ import torch.nn as nn
 
 
 BN_MOMENTUM = 0.1
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -504,7 +505,7 @@ class GazeHighResolutionNet(nn.Module):
 
         return heatmaps, ldmks, radius
 
-    def init_weights(self, pretrained=''):
+    def init_weights(self):
         logger.info('=> init weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -529,20 +530,6 @@ class GazeHighResolutionNet(nn.Module):
             elif isinstance(m, nn.BatchNorm1d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
-        if os.path.isfile(pretrained):
-            pretrained_state_dict = torch.load(pretrained)
-            logger.info('=> loading pretrained model {}'.format(pretrained))
-
-            need_init_state_dict = {}
-            for name, m in pretrained_state_dict.items():
-                if name.split('.')[0] in self.pretrained_layers \
-                   or self.pretrained_layers[0] is '*':
-                    need_init_state_dict[name] = m
-            self.load_state_dict(need_init_state_dict, strict=False)
-        elif pretrained:
-            logger.error('=> please download pre-trained models first!')
-            raise ValueError('{} is not exist!'.format(pretrained))
 
 
 class CalLandmarks(nn.Module):
@@ -610,13 +597,12 @@ class RadiusRegressor(nn.Module):
         return x
 
 
-
-
-def get_gaze_net(cfg, is_train: bool, **kwargs):
-    model = GazeHighResolutionNet(cfg, **kwargs)
-
-    if is_train and cfg['MODEL']['INIT_WEIGHTS']:
-        model.init_weights(cfg['MODEL']['PRETRAINED'])
+def get_gaze_net(cfg, pretrained: str, **kwargs):
+    if os.path.isfile(pretrained):
+        model = torch.load(pretrained)
+    else:
+        model = GazeHighResolutionNet(cfg, **kwargs)
+        model.init_weights()
+        model = model.cuda()
 
     return model
-    
