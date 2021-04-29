@@ -10,8 +10,8 @@ def train(batch_size, num_workers, start_epoch, epochs, version):
 
     from torch.utils.data import DataLoader
     from src.datasources.unityeyes import UnityEyesDataset
-    dataset_path = 'E:/Datasets/UnityEyes_Windows/480x640'
-    # dataset_path = '/home/junguo/Datasets/UnityEyes/480x640'
+    # dataset_path = 'G:/Datasets/UnityEyes_Windows/480x640'
+    dataset_path = '/home/junguo/Datasets/UnityEyes/480x640'
 
     train_dataset = UnityEyesDataset(dataset_path, cfg, is_train=True, random_difficulty=True, generate_heatmaps=True)
     train_dataloader = DataLoader(train_dataset, shuffle=True, batch_size=batch_size, num_workers=num_workers)
@@ -25,9 +25,9 @@ def train(batch_size, num_workers, start_epoch, epochs, version):
         train_dataset=train_dataloader,
         val_dataset=val_dataloader,
         epochs=epochs,
-        initial_learning_rate=0.001,
+        initial_learning_rate=0.00001,
         start_epoch=start_epoch,
-        print_freq=4,
+        print_freq=500,
         version='v0.1',
         tensorboard_dir='./logs'
         )

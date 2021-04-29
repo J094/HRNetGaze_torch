@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class HRNetTrainer(object):
     def __init__(self,
                  model,
@@ -35,7 +36,7 @@ class HRNetTrainer(object):
         self.start_epoch = start_epoch
 
         self.loss_obj = nn.MSELoss(reduction='mean')
-        self.optimizer = None
+        self.optimizer = self.optimizer = optim.Adam(self.model.parameters(), lr=self.current_learning_rate, weight_decay=1e-4)
         if not os.path.exists(os.path.join(tensorboard_dir)):
             os.makedirs(os.path.join(tensorboard_dir))
         self.summary_writer_train = SummaryWriter(tensorboard_dir + f'/train-{self.version}')
@@ -71,11 +72,11 @@ class HRNetTrainer(object):
         radius_label = inputs['radius'].cuda()
 
         heatmaps_predict, ldmks_predict, radius_predict = self.model(eye_input)
-        loss_heatmaps = self.compute_coord_loss(heatmaps_label, heatmaps_predict)
+        loss_heatmaps = 0.1 * self.compute_coord_loss(heatmaps_label, heatmaps_predict)
         loss_ldmks = self.compute_coord_loss(ldmks_predict, ldmks_label)
-        loss_radius = self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
+        loss_radius = 10e-7 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
 
-        loss = loss_heatmaps + 10e-7 * loss_radius
+        loss = loss_heatmaps + loss_ldmks + loss_radius
         self.model.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -88,9 +89,9 @@ class HRNetTrainer(object):
         radius_label = inputs['radius'].cuda()
 
         heatmaps_predict, ldmks_predict, radius_predict = self.model(eye_input)
-        loss_heatmaps = self.compute_coord_loss(heatmaps_label, heatmaps_predict)
+        loss_heatmaps = 0.1 * self.compute_coord_loss(heatmaps_label, heatmaps_predict)
         loss_ldmks = self.compute_coord_loss(ldmks_predict, ldmks_label)
-        loss_radius = self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
+        loss_radius = 10e-7 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
         return loss_heatmaps.item(), loss_ldmks.item(), loss_radius.item()
 
     def run(self):
@@ -110,17 +111,16 @@ class HRNetTrainer(object):
                 total_loss_heatmaps += batch_loss_heatmaps
                 total_loss_ldmks += batch_loss_ldmks
                 total_loss_radius += batch_loss_radius
-                # total_loss_gaze += batch_loss_gaze
                 num_train_batches += 1
                 if num_train_batches % self.print_freq == 0:
                     msg = 'Trained batch: {batch}\t' \
                           'Cost Time: {cost_time}\t' \
                           'Batch loss: {batch_loss:.5f}\t' \
-                          'Epoch total loss: {total_loss}'.format(
+                          'Epoch total loss: {total_loss:.5f}'.format(
                               batch=num_train_batches,
                               cost_time=time.time() - start_time,
-                              batch_loss=batch_loss_heatmaps + batch_loss_radius,
-                              total_loss=total_loss_heatmaps + total_loss_radius
+                              batch_loss=batch_loss_heatmaps + batch_loss_ldmks + batch_loss_radius,
+                              total_loss=total_loss_heatmaps + total_loss_ldmks + total_loss_radius
                           )
                     logger.info(msg)
 
@@ -130,12 +130,15 @@ class HRNetTrainer(object):
 
         def val_epoch(dataset):
             msg = 'Start validating...'
-            loger.info(msg)
+            logger.info(msg)
             total_loss_heatmaps = 0.0
             total_loss_ldmks = 0.0
             total_loss_radius = 0.0
             num_val_batches = 0.0
             for one_batch in dataset:
+
+                start_time = time.time()
+
                 batch_loss_heatmaps, batch_loss_ldmks, batch_loss_radius = self.val_step(one_batch)
                 total_loss_heatmaps += batch_loss_heatmaps
                 total_loss_ldmks += batch_loss_ldmks
@@ -145,11 +148,11 @@ class HRNetTrainer(object):
                     msg = 'Validated batch: {batch}\t' \
                           'Cost Time: {cost_time}\t' \
                           'Batch loss: {batch_loss:.5f}\t' \
-                          'Epoch total loss: {total_loss}'.format(
+                          'Epoch total loss: {total_loss:.5f}'.format(
                               batch=num_val_batches,
                               cost_time=time.time() - start_time,
-                              batch_loss=batch_loss_heatmaps + batch_loss_radius,
-                              total_loss=total_loss_heatmaps + total_loss_radius
+                              batch_loss=batch_loss_heatmaps + batch_loss_ldmks + batch_loss_radius,
+                              total_loss=total_loss_heatmaps + total_loss_ldmks + total_loss_radius
                           )
                     logger.info(msg)
             return total_loss_heatmaps / num_val_batches,\
@@ -165,22 +168,22 @@ class HRNetTrainer(object):
             logger.info(msg)
 
             train_loss_heatmaps, train_loss_ldmks, train_loss_radius = train_epoch(self.train_dataset)
-            total_train_loss = train_loss_heatmaps + train_loss_radius
+            total_train_loss = train_loss_heatmaps + train_loss_ldmks + train_loss_radius
             msg = 'Epoch {} train loss {}'.format(epoch, total_train_loss)
             logger.info(msg)
             self.summary_writer_train.add_scalar('epoch loss', total_train_loss, epoch)
-            self.summary_writer_train.add_scalar('epoch loss heatmaps', train_loss_heatmaps, epoch)
+            self.summary_writer_train.add_scalar('epoch loss heatmaps', 10 * train_loss_heatmaps, epoch)
             self.summary_writer_train.add_scalar('epoch loss ldmks', train_loss_ldmks, epoch)
-            self.summary_writer_train.add_scalar('epoch loss radius', train_loss_radius, epoch)
+            self.summary_writer_train.add_scalar('epoch loss radius', 10e7 * train_loss_radius, epoch)
 
             val_loss_heatmaps, val_loss_ldmks, val_loss_radius = val_epoch(self.val_dataset)
-            total_val_loss = val_loss_heatmaps + val_loss_radius
+            total_val_loss = val_loss_heatmaps + val_loss_ldmks + val_loss_radius
             msg = 'Epoch {} val loss {}'.format(epoch, total_val_loss)
             logger.info(msg)
             self.summary_writer_val.add_scalar('epoch loss', total_val_loss, epoch)
-            self.summary_writer_val.add_scalar('epoch loss heatmaps', val_loss_heatmaps, epoch)
+            self.summary_writer_val.add_scalar('epoch loss heatmaps', 10 * val_loss_heatmaps, epoch)
             self.summary_writer_val.add_scalar('epoch loss ldmks', val_loss_ldmks, epoch)
-            self.summary_writer_val.add_scalar('epoch loss radius', val_loss_radius, epoch)
+            self.summary_writer_val.add_scalar('epoch loss radius', 10e7 * val_loss_radius, epoch)
 
             # save model when reach a new lowest validation loss
             if total_val_loss < self.lowest_val_loss:
