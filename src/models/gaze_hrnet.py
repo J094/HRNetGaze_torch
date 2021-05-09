@@ -506,7 +506,7 @@ class GazeHighResolutionNet(nn.Module):
         return heatmaps, ldmks, radius
 
     def init_weights(self):
-        logger.info('=> init weights from normal distribution')
+        logger.info('=> init gaze_net weights from normal distribution')
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 # nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -599,6 +599,7 @@ class RadiusRegressor(nn.Module):
 
 def get_gaze_net(cfg, pretrained: str, **kwargs):
     if os.path.isfile(pretrained):
+        logger.info('=> init gaze_net weights from pretrained model')
         model = torch.load(pretrained)
     else:
         model = GazeHighResolutionNet(cfg, **kwargs)
