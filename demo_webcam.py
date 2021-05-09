@@ -37,6 +37,7 @@ def clip_eye_region(eye_region_landmarks, image):
         eye = cv.warpAffine(image, transform_mat[:2, :3], (ow, oh))
         eye = cv.equalizeHist(eye)
         eye = eye.astype(np.float32)
+        # eye *= 1.0 / 255.0
         eye *= 2.0 / 255.0
         eye -= 1.0
         return eye, np.asarray(transform_mat)
