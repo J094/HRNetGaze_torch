@@ -9,7 +9,6 @@ numpy
 opencv
 imutils
 dlib
-scipy
 ```
 
 ## Example
