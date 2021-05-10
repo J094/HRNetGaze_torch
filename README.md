@@ -9,6 +9,7 @@ numpy
 opencv
 imutils
 dlib
+yacs
 ```
 
 ## Example
