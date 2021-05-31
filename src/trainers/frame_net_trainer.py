@@ -162,7 +162,7 @@ class FrameNetTrainer(object):
                 total_loss_gaze += batch_loss_gaze
                 num_val_batches += 1
                 if num_val_batches % self.print_freq == 0:
-                    msg = 'Trained batch: {batch}\t' \
+                    msg = 'Validated batch: {batch}\t' \
                           'Batch loss: {batch_loss:.5f}\t' \
                           'Epoch total loss: {total_loss:.5f}\t' \
                           'Cost Time: {cost_time:.5f}\t' \

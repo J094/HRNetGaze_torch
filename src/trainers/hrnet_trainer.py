@@ -74,7 +74,7 @@ class HRNetTrainer(object):
         heatmaps_predict, ldmks_predict, radius_predict = self.model(eye_input)
         loss_heatmaps = 0.1 * self.compute_coord_loss(heatmaps_label, heatmaps_predict)
         loss_ldmks = self.compute_coord_loss(ldmks_predict, ldmks_label)
-        loss_radius = 1e-3 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
+        loss_radius = 0.01 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
 
         loss = loss_heatmaps + loss_ldmks + loss_radius
         self.model.zero_grad()
@@ -91,7 +91,7 @@ class HRNetTrainer(object):
         heatmaps_predict, ldmks_predict, radius_predict = self.model(eye_input)
         loss_heatmaps = 0.1 * self.compute_coord_loss(heatmaps_label, heatmaps_predict)
         loss_ldmks = self.compute_coord_loss(ldmks_predict, ldmks_label)
-        loss_radius = 1e-3 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
+        loss_radius = 0.01 * self.compute_coord_loss(radius_predict, torch.unsqueeze(radius_label, dim=-1))
         return loss_heatmaps.item(), loss_ldmks.item(), loss_radius.item()
 
     def run(self):
@@ -178,7 +178,7 @@ class HRNetTrainer(object):
             self.summary_writer_train.add_scalar('epoch loss', total_train_loss, epoch)
             self.summary_writer_train.add_scalar('epoch loss heatmaps', 10 * train_loss_heatmaps, epoch)
             self.summary_writer_train.add_scalar('epoch loss ldmks', train_loss_ldmks, epoch)
-            self.summary_writer_train.add_scalar('epoch loss radius', 1e3 * train_loss_radius, epoch)
+            self.summary_writer_train.add_scalar('epoch loss radius', 100 * train_loss_radius, epoch)
 
             val_loss_heatmaps, val_loss_ldmks, val_loss_radius = val_epoch(self.val_dataset)
             total_val_loss = val_loss_heatmaps + val_loss_ldmks + val_loss_radius
@@ -187,7 +187,7 @@ class HRNetTrainer(object):
             self.summary_writer_val.add_scalar('epoch loss', total_val_loss, epoch)
             self.summary_writer_val.add_scalar('epoch loss heatmaps', 10 * val_loss_heatmaps, epoch)
             self.summary_writer_val.add_scalar('epoch loss ldmks', val_loss_ldmks, epoch)
-            self.summary_writer_val.add_scalar('epoch loss radius', 1e3 * val_loss_radius, epoch)
+            self.summary_writer_val.add_scalar('epoch loss radius', 100 * val_loss_radius, epoch)
 
             # save model when reach a new lowest validation loss
             if total_val_loss < self.lowest_val_loss:

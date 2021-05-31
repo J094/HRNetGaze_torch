@@ -45,17 +45,77 @@ def get_gaze_frame(heatmaps, landmarks):
     return torch.tensor(frames, dtype=torch.float32).cuda()
 
 
+def get_gaze_frame_v2(heatmaps, landmarks):
+    """
+    Input: heatmaps, landmarks (torch.tensor in gpu) (n, c, h, w)
+    Output: gaze_frame combined with heatmaps and landmarks (torch.tensor in gpu) (n, 1, h, w)
+    """
+    heatmaps = heatmaps.cpu().detach().numpy()
+    landmarks = landmarks.cpu().detach().numpy()
+
+    n, c, h, w = heatmaps.shape
+    landmarks = np.floor((landmarks + 0.5), dtype=np.float)
+    landmarks = np.int32(landmarks)
+    frames = np.zeros((n, h, w))
+    for i in range(n):
+        heatmap = np.zeros(cfg.MODEL.IMAGE_SIZE)
+        frame_2d = np.zeros(cfg.MODEL.IMAGE_SIZE)
+        for j in range(c):
+            heatmap += heatmaps[i][j]
+        iris_centre = landmarks[i][-2]
+        eyeball_centre = landmarks[i][-1]
+        cv.line(frame_2d, tuple(eyeball_centre), tuple(iris_centre), color=(1, 1, 1), thickness=2)
+        frame = heatmap + frame_2d
+        valmax = np.max(frame)
+        valmin = np.min(frame)
+        frames[i] = frame/(valmax-valmin)
+    frames = np.expand_dims(frames, axis=1)
+    return torch.tensor(frames, dtype=torch.float32).cuda()
+
+
+def get_gaze_frame_v3(heatmaps, landmarks):
+    """
+    Input: heatmaps, landmarks (torch.tensor in gpu) (n, c, h, w)
+    Output: gaze_frame combined with heatmaps and landmarks (torch.tensor in gpu) (n, 1, h, w)
+    """
+    heatmaps = heatmaps.cpu().detach().numpy()
+    landmarks = landmarks.cpu().detach().numpy()
+
+    n, c, h, w = heatmaps.shape
+    landmarks = np.floor((landmarks + 0.5), dtype=np.float)
+    landmarks = np.int32(landmarks)
+    frames = np.zeros((n, h, w))
+    for i in range(n):
+        frame_2d = np.zeros(cfg.MODEL.IMAGE_SIZE)
+        interior_landmarks = landmarks[i][0:8]
+        iris_landmarks = landmarks[i][8:16]
+        iris_centre = landmarks[i][-2]
+        eyeball_centre = landmarks[i][-1]
+        cv.polylines(frame_2d, [interior_landmarks], isClosed=True, color=(1, 1, 1), thickness=2)
+        cv.polylines(frame_2d, [iris_landmarks], isClosed=True, color=(1, 1, 1), thickness=2)
+        cv.line(frame_2d, tuple(eyeball_centre), tuple(iris_centre), color=(1, 1, 1), thickness=2)
+        frame = frame_2d
+        valmax = np.max(frame)
+        valmin = np.min(frame)
+        frames[i] = frame/(valmax-valmin)
+    frames = np.expand_dims(frames, axis=1)
+    return torch.tensor(frames, dtype=torch.float32).cuda()
+
+
 class FrameNet(nn.Module):
-    def __init__(self, num_layers):
+    def __init__(self, num_layers, high_resolution:bool = True):
         super(FrameNet, self).__init__()
         # Fist downsample.
-        self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=2, padding=1,
+        if high_resolution:
+            self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=2, padding=1,
+                               bias=False)
+        else:
+            self.conv1 = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
         self.conv2 = nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn2 = nn.BatchNorm2d(64, momentum=BN_MOMENTUM)
-        # Second downsample.
         self.conv3 = nn.Conv2d(64, 1, kernel_size=3, stride=1, padding=1,
                                bias=False)
         self.bn3 = nn.BatchNorm2d(1, momentum=BN_MOMENTUM)
@@ -107,13 +167,13 @@ class FrameNet(nn.Module):
         return gaze
 
 
-def get_frame_net(pretrained=""):
+def get_frame_net(pretrained="", high_resolution:bool = True):
     if os.path.isfile(pretrained):
         logger.info('=> init frame_net weights from pretrained model')
         model = torch.load(pretrained)
     else:
         logger.info('=> init frame_net weights by default')
-        model = FrameNet(num_layers=3)
+        model = FrameNet(num_layers=3, high_resolution=high_resolution)
         model = model.cuda()
 
     return model

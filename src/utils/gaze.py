@@ -1,6 +1,29 @@
 """Utility methods for gaze angle and error calculations."""
 import cv2 as cv
 import numpy as np
+import torch
+
+
+def angular_error_torch(predict, label):
+    """Pytorch method to calculate angular loss (via cosine similarity)"""
+    def angle_to_unit_vectors(y):
+        sin = torch.sin(y)
+        cos = torch.cos(y)
+        return torch.stack([
+            cos[:, 0] * sin[:, 1],
+            sin[:, 0],
+            cos[:, 0] * cos[:, 1],
+            ], dim=1)
+
+    a = angle_to_unit_vectors(predict)
+    b = angle_to_unit_vectors(label)
+    ab = torch.sum(a*b, dim=1)
+    a_norm = torch.sqrt(torch.sum(torch.square(a), dim=1))
+    b_norm = torch.sqrt(torch.sum(torch.square(b), dim=1))
+    cos_sim = ab / (a_norm * b_norm)
+    cos_sim = torch.clip(cos_sim, -1.0 + 1e-6, 1.0 - 1e-6)
+    ang = torch.acos(cos_sim) * 180. / np.pi
+    return torch.mean(ang)
 
 
 def pitchyaw_to_vector(pitchyaws):
@@ -35,8 +58,8 @@ def vector_to_pitchyaw(vectors):
     out = np.empty((n, 2))
     
     vectors = np.divide(vectors, np.linalg.norm(vectors, axis=1).reshape(n, 1))
-    out[:, 0] = np.arcsin(vectors[:, 1])  # phi
-    out[:, 1] = np.arctan2(vectors[:, 0], vectors[:, 2])  # theta
+    out[:, 0] = np.arcsin(vectors[:, 1])  # pitch
+    out[:, 1] = np.arctan2(vectors[:, 0], vectors[:, 2])  # yaw
     return out
 
 
@@ -70,7 +93,7 @@ def draw_gaze(image_in, eye_pos, pitchyaw, length=40.0, thickness=2, color=(0, 0
     image_out = image_in
     if len(image_out.shape) == 2 or image_out.shape[2] == 1:
         image_out = cv.cvtColor(image_out, cv.COLOR_GRAY2BGR)
-    dx = -length * np.sin(pitchyaw[1])
+    dx = -length * np.cos(pitchyaw[0]) * np.sin(pitchyaw[1])
     dy = -length * np.sin(pitchyaw[0])
     cv.arrowedLine(image_out, tuple(np.round(eye_pos).astype(np.int32)),
                    tuple(np.round([eye_pos[0] + dx, eye_pos[1] + dy]).astype(int)), color,

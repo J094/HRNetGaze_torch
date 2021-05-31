@@ -1,11 +1,12 @@
 import sys
+import argparse
 import torch.backends.cudnn as cudnn
 
 
 def train(batch_size, num_workers, start_epoch, epochs, version):
 
-    # cudnn.benchmark = True
-    # cudnn.deterministic = True
+    cudnn.benchmark = True
+    cudnn.deterministic = False
 
     from src.configs import cfg
     import src.models.gaze_hrnet as gaze_hrnet
@@ -39,10 +40,16 @@ def train(batch_size, num_workers, start_epoch, epochs, version):
 
 
 if __name__ == "__main__":
-    batch_size = eval(sys.argv[1])
-    num_workers = eval(sys.argv[2])
-    start_epoch = eval(sys.argv[3])
-    epochs = eval(sys.argv[4])
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--batch-size', '-b', type=int, required=True)
+    parser.add_argument('--num-workers', '-w', type=int, required=True)
+    parser.add_argument('--start-epoch', '-s', type=int, required=True)
+    parser.add_argument('--end-epoch', '-e', type=int, required=True)
+    args = parser.parse_args()
 
-    train(batch_size, num_workers, start_epoch, epochs, version='v0.2-hrnet')
+    batch_size = args.batch_size
+    num_workers = args.num_workers
+    start_epoch = args.start_epoch
+    epochs = args.end_epoch
 
+    train(batch_size, num_workers, start_epoch, epochs, version='v0.3-hrnet')

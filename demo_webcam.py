@@ -8,6 +8,7 @@ import logging
 
 import src.models.gaze_frame_net as gaze_frame_net
 import src.utils.gaze as gaze_util
+from src.configs import cfg
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 def clip_eye_region(eye_region_landmarks, image):
     # Output size.
-    oh, ow = 72, 120
+    oh, ow = cfg.MODEL.IMAGE_SIZE
 
     def process_coords(coords_list):
         return np.array([(x, y) for (x, y) in coords_list])
@@ -34,7 +35,7 @@ def clip_eye_region(eye_region_landmarks, image):
 
         transform_mat = recentre_mat * scale_mat
 
-        eye = cv.warpAffine(image, transform_mat[:2, :3], (ow, oh))
+        eye = cv.warpAffine(image, transform_mat[:2, :3], (ow, oh), flags=cv.INTER_CUBIC)
         eye = cv.equalizeHist(eye)
         eye = eye.astype(np.float32)
         # eye *= 1.0 / 255.0
@@ -65,7 +66,7 @@ def estimate_gaze(eye_image, transform_mat, model_hrnet, model_frame, is_left: b
     predict = gaze_predict.cpu().detach().numpy().reshape(1, 2)
     iris_center = ldmks_predict[0].cpu().detach().numpy()[16]
     if is_left:
-        iris_center[0] = 120 - iris_center[0]
+        iris_center[0] = cfg.MODEL.IMAGE_SIZE[1] - iris_center[0]
     iris_center = (iris_center - [transform_mat[0][2], transform_mat[1][2]]) / transform_mat[0][0]
     return predict, iris_center
 
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     # p = "./src/models/shape_predictor_68_face_landmarks_GTX.dat"
     detector = dlib.cnn_face_detection_model_v1(d)
     predictor = dlib.shape_predictor(p)
-    model_hrnet = torch.load('./models/model-v0.2-hrnet-radiusH-epoch-50-loss-1.08801.pth')
+    model_hrnet = torch.load('./models/model-v0.2-hrnet-epoch-50-loss-1.08801.pth')
     model_hrnet.eval()
     model_frame = torch.load('./models/model-v0.2-frame_net-epoch-15-loss-3.07270.pth')
     model_frame.eval()
@@ -142,7 +143,7 @@ if __name__ == "__main__":
 
         # Show the output image with gaze direction.
         cv.imshow("Output", image)
-        k = cv.waitKey(5) & 0xFF
+        k = cv.waitKey(2) & 0xFF
         if k == 27:
             break
 

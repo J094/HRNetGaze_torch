@@ -23,6 +23,7 @@ _C.MODEL.TAG_PER_LDMKS = True
 _C.MODEL.TARGET_TYPE = 'gaussian'
 _C.MODEL.IMAGE_SIZE = [72, 120]
 _C.MODEL.HEATMAPS_SCALE = 1
+_C.MODEL.HIGH_RESOLUTION = True
 # _C.MODEL.SIGMA = 2
 # HRNet-W18-light
 # gaze_multi_resoluton_net related params

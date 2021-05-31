@@ -15,6 +15,8 @@ import logging
 import torch
 import torch.nn as nn
 
+from src.configs import cfg
+
 
 BN_MOMENTUM = 0.1
 logging.basicConfig(level=logging.INFO)
@@ -486,15 +488,17 @@ class GazeHighResolutionNet(nn.Module):
         # Go through stage3.
         y_list = self.stage3(x_list)
 
-        x_list = []
-        # Go through transition3.
-        for i in range(self.stage4_cfg['NUM_BRANCHES']):
-            if self.transition3[i] is not None:
-                x_list.append(self.transition3[i](y_list[-1]))
-            else:
-                x_list.append(y_list[i])
-        # Go through stage4.
-        y_list = self.stage4(x_list)
+        # If input is a high_resolution image.
+        if cfg['MODEL']['HIGH_RESOLUTION']:
+            x_list = []
+            # Go through transition3.
+            for i in range(self.stage4_cfg['NUM_BRANCHES']):
+                if self.transition3[i] is not None:
+                    x_list.append(self.transition3[i](y_list[-1]))
+                else:
+                    x_list.append(y_list[i])
+            # Go through stage4.
+            y_list = self.stage4(x_list)
         
         # Final layer to predict 18 heatmaps for 18 landmarks.
         heatmaps = self.final_layer(y_list[0])
