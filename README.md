@@ -32,3 +32,6 @@ I use dlib mmod_human_face_detector to detect face region.
 Then, i use dlib shape_predictor_5_landmarks to get eye landmarks for clippling eye region.
 
 After that, i use my HRNFrameGaze model to estimate gaze.
+
+reference:
+https://arxiv.org/abs/1805.04771v1
