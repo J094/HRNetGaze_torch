@@ -1,4 +1,4 @@
-# HRNFrameGaze_torch
+# HRNetGaze_torch
 A brand-new feature-based gaze estimation model for high resolution images.
 
 A light-weight HRNet to estimate landmarks of eye image. https://github.com/leoxiaobin/deep-high-resolution-net.pytorch
